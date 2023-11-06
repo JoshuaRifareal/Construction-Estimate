@@ -1,6 +1,7 @@
 Attribute VB_Name = "ChipDropdown"
 Sub ColFootMixChip_Click()
-    HideDropdown "ColFoot Mix Dropdown"
+    HideDropdown "ColFoot Mix Options"
+    HideDropdown "ColFoot Mix Panel"
 End Sub
 
 Sub HideDropdown(dropdownName As String)
