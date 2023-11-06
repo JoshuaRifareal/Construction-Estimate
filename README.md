@@ -1,3 +1,3 @@
 # Construction-Estimate
 
-Automated Construction estimator with illustrations and formula
+Excel speadsheet Construction estimator with illustrations and formula. Automated using VBA
