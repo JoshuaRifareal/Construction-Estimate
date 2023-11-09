@@ -23,7 +23,6 @@ Sub ChangeDimension(shapeName As String, parentName As String, inputCell As Stri
         If parentGroup.Name = parentName And parentGroup.Type = msoGroup Then
             ' Shift group position back to original
             ' to compensate for any side effects
-
             parentGroupTop = parentGroup.Top
             parentGroupLeft = parentGroup.Left
             parentGroupWidth = parentGroup.Width
@@ -42,9 +41,11 @@ Sub ChangeDimension(shapeName As String, parentName As String, inputCell As Stri
                     If IsNumeric(ws.Range(inputCell).Value) Then
                         inputValue =  CDbl(ws.Range(inputCell).Value)
                         
+                        If (inputValue > maxValue) Then
+                            inputValue = maxValue
+                        End If
+
                         ChangeLength targetShape.Name, inputValue
-                        parentGroup.Width = parentGroupWidth
-                        parentGroup.Height = parentGroupHeight
                     End If
                 Else
                     ' Modify child and relative shapes
@@ -53,26 +54,24 @@ Sub ChangeDimension(shapeName As String, parentName As String, inputCell As Stri
                             If IsNumeric(ws.Range(relativeCell).Value) Then
 
                                 inputValue =  CDbl(ws.Range(inputCell).Value)
+                                relativeValue = CDbl(ws.Range(relativeCell).Value)
+                                
+                                relativeValueNormal = NormalizeDimensions(maxValue, inputValue, maxRelative, relativeValue)("Y")
                                 inputValueNormal = NormalizeDimensions(maxValue, inputValue, maxRelative, relativeValue)("X")
                                 
-                                relativeValue = CDbl(ws.Range(relativeCell).Value)
-                                relativeValueNormal = NormalizeDimensions(maxValue, inputValue, maxRelative, relativeValue)("Y")
+                                Debug.print "Normalized values:  " & targetShape.Name & ":" & inputValueNormal & ", " & relativeShape.Name & ": " & relativeValueNormal
 
                                 If Not IsMissing(mapToX) Then
                                     inputValueNormal = MapDimension(inputValueNormal, 0, maxValue, 0, mapToX)
-                                    relativeValueNormal = MapDimension(relativeValueNormal, 0, maxValue, 0, mapToY)
+                                    relativeValueNormal = MapDimension(relativeValueNormal, 0, maxRelative, 0, mapToY)
                                 End If
-
+                                
                                 ChangeLength targetShape.Name, inputValueNormal
                                 ChangeLength relativeShape.Name, relativeValueNormal
-                                parentGroup.Width = parentGroupWidth
-                                parentGroup.Height = parentGroupHeight
-                            
                             End If
                         End If
                     Next relativeShape
                 End If
-
                 Exit For
             End If
         Next targetShape
@@ -101,17 +100,16 @@ Function NormalizeDimensions(maxX As Double, originalX As Double, maxY As Double
         
         ' Bring back to max after normalization
         If (normalizedX > normalizedY) Then
-            Dim scaleX : scaleX = maxValue/normalizedX
-            normalizedX = maxValue
+            Dim scaleX As Double: scaleX = maxX/normalizedX
+            normalizedX = maxX
             normalizedY = normalizedY * scaleX
         End If
         If (normalizedY > normalizedX) Then
-            Dim scaleY : scaleY = maxRelative/normalizedY
+            Dim scaleY As Double: scaleY = maxY/normalizedY
             normalizedX = normalizedX * scaleY
-            normalizedY = maxRelative
+            normalizedY = maxY
         End If
-        If (normalizedY = normalizedX) Then
-            MsgBox "Equal sila"
+        If (normalizedX = normalizedY) Then
             normalizedX = maxX
             normalizedY = maxY
         End If
@@ -217,17 +215,24 @@ Sub MoveRelativeShape(shapeName As String, adjacentName As String, moveToEnd as 
     
 End Sub 
 
+Sub MoveShape(shapeName As String, X As Double, Y As Double)
+    Dim ws As Worksheet : Set ws = ThisWorkbook.Sheets("Sheet1")
+    Dim targetShape As Shape : Set targetShape = ws.Shapes(shapeName)
+
+    targetShape.Left = X
+    targetShape.Top = Y
+End Sub 
+
 Sub TryFunctions()
     Dim ws As Worksheet : Set ws = ThisWorkbook.Sheets("Sheet1")
     Dim targetShape As Shape : Set targetShape = ws.Shapes("Width 1")
+    Dim normal As New Collection
 
     ' ChangeAngle "Width 1", 30
     ' ChangeLength "Width 1", 2
     ' MsgBox "Angle: " & GetAngle(targetShape)
-
-    Dim normal As New Collection
-    Set normal = NormalizeDimensions (2, 3, 2, 5)
-    MsgBox "X: " & normal("X") & vbNewLine & "Y: " & normal("Y")
+    ' Set normal = NormalizeDimensions (2, 10, 2, 2)
+    MsgBox NormalizeDimensions(2, 3, 2, 4)("X") & ", " & NormalizeDimensions(2, 3, 2, 4)("Y")
 End Sub
 
 
