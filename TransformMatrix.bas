@@ -1,38 +1,89 @@
 Attribute VB_Name = "TransformMatrix"
 
-Sub ChangeLength(shapeName As String, inputCell As String, Optional parentName As String, Optional basisCell As String)
-    Dim workSheet As Worksheet : Set workSheet = ThisWorkbook.Worksheets("Sheet1")
-    Dim inputCellValue As Double : inputCellValue = CDbl(workSheet.Range(inputCell).Value)
+Sub ChangeDimension(prop As String, shapeName As String, parentName As String, inputCell As String, maxValue As Double, Optional relativeProp As String, Optional relativeShapeName As String, Optional relativeCell As String, Optional maxRelative As Double, Optional mapToX As Double, Optional mapToY As Double)
+    Dim ws As Worksheet : Set ws = ThisWorkbook.ActiveSheet
+    Dim parentGroup As Shape
+    Dim targetShape As Shape
+    Dim relativeShape As Shape
+    Dim inputValue As Double
+    Dim inputValuePoints As Double
+    Dim inputValueNormal As Double
+    Dim relativeValue As Double
+    Dim relativeValuePoints As Double
+    Dim relativeValueNormal As Double
+    Dim mappedDimension As Double
 
-    ' Step 1: Identify the target shape by its name
-    Dim targetShape As Shape : Set targetShape = workSheet.Shapes(shapeName)
-    If targetShape Is Nothing Then
-        MsgBox "Shape not found."
-        Exit Sub
-    End If
-    
-    ' Step 2: Find child shapes with shapeName in their name
-    If Not IsMissing(parentName) Then
 
-        For Each groupShape In workSheet.Shapes
+    ' Find the parent group by name
+    For Each parentGroup In ws.Shapes
+        If parentGroup.Name = parentName And parentGroup.Type = msoGroup Then
+            Exit For
+        End If
+    Next parentGroup
 
-            If groupShape.Name = parentName And groupShape.Type = msoGroup Then
-                MsgBox "Found parent! " & groupShape.Name
+    ' Look for child and relative shapes
+    If Not parentGroup Is Nothing Then
+        For Each targetShape In parentGroup.GroupItems
+            If targetShape.Name = shapeName Then
 
-                For Each childShape In groupShape.GroupItems
-                    If InStr(1, childShape.Name, shapeName, vbTextCompare) > 0 And InStr(1, childShape.Name, parentName, vbTextCompare) > 0 Then
-                        MsgBox "Found child: " & childShape.Name
+                If IsMissing(relativeProp) Then
+                    ' Modify child shape only
+                    If IsNumeric(ws.Range(inputCell).Value) Then
+                        inputValue =  CDbl(ws.Range(inputCell).Value)
+                        
+                        LengthenLineShape targetShape, inputValue, 30
+                    
                     End If
-                Next childShape
+                Else
+                    ' Modify child and relative shapes
+                    For Each relativeShape In parentGroup.GroupItems
+                        If relativeShape.Name = relativeShapeName Then
+                            If IsNumeric(ws.Range(relativeCell).Value) Then
+
+                                inputValue =  CDbl(ws.Range(inputCell).Value)
+                                inputValueNormal = NormalizeDimensions(maxValue, inputValue, maxRelative, relativeValue)("X")
+                                inputValuePoints = Application.InchesToPoints(inputValueNormal)
+
+                                relativeValue = CDbl(ws.Range(relativeCell).Value)
+                                relativeValueNormal = NormalizeDimensions(maxValue, inputValue, maxRelative, relativeValue)("Y")
+                                relativeValuePoints = Application.InchesToPoints(relativeValueNormal)
+
+                                If Not IsMissing(mapToX) Then
+                                    inputValueNormal = MapDimension(inputValueNormal, 0, maxValue, 0, mapToX)
+                                    relativeValueNormal = MapDimension(relativeValueNormal, 0, maxValue, 0, mapToY)
+                                    
+                                    inputValuePoints = Application.InchesToPoints(inputValueNormal)
+                                    relativeValuePoints = Application.InchesToPoints(relativeValueNormal)
+                                End If
+
+                                If prop="Width" Then 
+                                    targetShape.Width = inputValuePoints 
+                                End If
+
+                                If prop="Height" Then 
+                                    targetShape.Height = inputValuePoints 
+                                End If
+
+                                If relativeProp="Width" Then 
+                                    relativeShape.Width = relativeValuePoints 
+                                End If
+
+                                If relativeProp="Height" Then 
+                                    relativeShape.Height = relativeValuePoints 
+                                End If
+                            
+                            End If
+                        End If
+                    Next relativeShape
+                End If
+
                 Exit For
             End If
-
-        Exit For
-        Next groupShape
+        Next targetShape
     End If
 End Sub
 
-Function NormalizedDimensions(maxX As Double, maxY As Double, originalX As Double, originalY As Double) As Collection
+Function NormalizeDimensions(maxX As Double, originalX As Double, maxY As Double, originalY As Double) As Collection
     Dim normalizedValues As New Collection
     
     ' Check if values exceed the maximum
@@ -44,24 +95,70 @@ Function NormalizedDimensions(maxX As Double, maxY As Double, originalX As Doubl
         ' Normalize values based on the sum and maximum values
         Dim normalizedX As Double
         Dim normalizedY As Double
-        normalizedX = (originalX / sumOriginal) * (maxX + maxY)
-        normalizedY = (originalY / sumOriginal) * (maxX + maxY)
+        normalizedX = (originalX / sumOriginal) * maxX
+        normalizedY = (originalY / sumOriginal) * maxY
         
         ' Add named elements to the collection
-        normalizedValues.Add normalizedX, "NormalX"
-        normalizedValues.Add normalizedY, "NormalY"
+        normalizedValues.Add normalizedX, "X"
+        normalizedValues.Add normalizedY, "Y"
     Else
         ' Values are within limits, no need to normalize
         ' Add named elements to the collection
-        normalizedValues.Add originalX, "NormalX"
-        normalizedValues.Add originalY, "NormalY"
+        normalizedValues.Add originalX, "X"
+        normalizedValues.Add originalY, "Y"
     End If
     
-    Set NormalizedDimensions = normalizedValues
+    Set NormalizeDimensions = normalizedValues
 End Function
 
-Sub UpdateDimensions()
-    'Debug.Print "Normalized X: " & NormalizedDimensions(200, 200, 300, 150)("NormalX")
-    ChangeLength "length"
+Function MapDimension(inputValue As Double, inputMin As Double, inputMax As Double, outputMin As Double, outputMax As Double) As Double
+    Dim ws As Worksheet : Set ws = ThisWorkbook.ActiveSheet
+    
+    If inputMin = inputMax Then
+        ' Avoid division by zero
+        MapValue = outputMin 
+    Else
+        ' Perform linear mapping
+        MapDimension = ((inputValue - inputMin) / (inputMax - inputMin)) * (outputMax - outputMin) + outputMin
+    End If
+End Function
+
+Sub MoveRelativeShape(shapeName As String, adjacentName As String)
+    Dim ws As Worksheet : Set ws = ThisWorkbook.Sheets("Sheet1")
+    Dim targetShape As Shape : Set targetShape = ws.Shapes(shapeName)
+    Dim adjacentShape As Shape : Set adjacentShape = ws.Shapes(adjacentName)
+
+    targetShape.Left = adjacentShape.Left + adjacentShape.Width
+    targetShape.Top = adjacentShape.Top + adjacentShape.Height
+    MsgBox "Target: " & targetShape.Top & ", Adjacent: " & adjacentShape.Top
+End Sub 
+
+Sub LengthenLineShape(targetShape As Shape, newlength As Double, angleInDegrees As Double)
+    Set ws = ThisWorkbook.Worksheets("Sheet1") ' Change the worksheet name
+    Dim angleInRadians As Double : angleInRadians = WorksheetFunction.Radians(angleInDegrees)
+
+    ' Get the starting point coordinates
+    Dim startX As Double : startX = targetShape.Left
+    Dim startY As Double : startY = targetShape.Top
+    
+    ' Convert length to points
+    newLength = Application.InchesToPoints(newlength)
+
+    ' Calculate width and height
+    Dim newWidth As Double : newWidth = newLength * Cos(angleInRadians)
+    Dim newHeight As Double : newHeight = newLength * Sin(angleInRadians)
+
+    '  Modidy length
+    targetShape.Width = newWidth
+    targetShape.Height = newHeight
+    targetShape.Left = startX
+    targetShape.Top = startY
 End Sub
+
+
+
+
+
+
+
 
