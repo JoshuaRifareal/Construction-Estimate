@@ -1,11 +1,10 @@
 Private Sub Worksheet_Change(ByVal Target As Range)
-    Dim WatchRange As Range: Set WatchRange = Me.Range("K12:K14")
 
     ' Update Column Footing
-    If Not Intersect(Target, WatchRange) Is Nothing Then
+    If Not Intersect(Target, Me.Range("K12:K14")) Is Nothing Then
         ColumnFooting.UpdateLength
         ColumnFooting.UpdateWidth
-        
+        ColumnFooting.UpdateThickness
     End If
 End Sub
 
