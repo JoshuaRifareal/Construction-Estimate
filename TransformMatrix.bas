@@ -21,6 +21,9 @@ Sub ChangeDimension(shapeName As String, parentName As String, inputCell As Stri
     ' Find the parent group by name
     For Each parentGroup In ws.Shapes
         If parentGroup.Name = parentName And parentGroup.Type = msoGroup Then
+            ' Shift group position back to original
+            ' to compensate for any side effects
+
             parentGroupTop = parentGroup.Top
             parentGroupLeft = parentGroup.Left
             parentGroupWidth = parentGroup.Width
@@ -51,7 +54,7 @@ Sub ChangeDimension(shapeName As String, parentName As String, inputCell As Stri
 
                                 inputValue =  CDbl(ws.Range(inputCell).Value)
                                 inputValueNormal = NormalizeDimensions(maxValue, inputValue, maxRelative, relativeValue)("X")
-
+                                
                                 relativeValue = CDbl(ws.Range(relativeCell).Value)
                                 relativeValueNormal = NormalizeDimensions(maxValue, inputValue, maxRelative, relativeValue)("Y")
 
@@ -96,6 +99,23 @@ Function NormalizeDimensions(maxX As Double, originalX As Double, maxY As Double
         normalizedX = (originalX / sumOriginal) * maxX
         normalizedY = (originalY / sumOriginal) * maxY
         
+        ' Bring back to max after normalization
+        If (normalizedX > normalizedY) Then
+            Dim scaleX : scaleX = maxValue/normalizedX
+            normalizedX = maxValue
+            normalizedY = normalizedY * scaleX
+        End If
+        If (normalizedY > normalizedX) Then
+            Dim scaleY : scaleY = maxRelative/normalizedY
+            normalizedX = normalizedX * scaleY
+            normalizedY = maxRelative
+        End If
+        If (normalizedY = normalizedX) Then
+            MsgBox "Equal sila"
+            normalizedX = maxX
+            normalizedY = maxY
+        End If
+
         ' Add named elements to the collection
         normalizedValues.Add normalizedX, "X"
         normalizedValues.Add normalizedY, "Y"
@@ -141,7 +161,6 @@ Sub ChangeLength(shapeName As String, newlength As Double)
     'Get angle
     Dim currentAngle As Double : currentAngle = GetAngle(targetShape)
     Dim angleInRadians As Double : angleInRadians = currentAngle * (WorksheetFunction.Pi / 180)
-    MsgBox targetShape.Name & " Angle in Rad: " & angleInRadians & vbClrf & "Angle in Deg:" & currentAngle
 
     'Modidy length
     targetShape.Width = Application.InchesToPoints(newlength) * Cos(angleInRadians)
@@ -183,14 +202,19 @@ Function GetAngle(lineShape As Shape) As Double
     GetAngle = (WorksheetFunction.Atan2(lineShape.Width, IIf(lineShape.VerticalFlip, 1, 1) * lineShape.Height)) * (180 / WorksheetFunction.Pi)
 End Function
 
-Sub MoveRelativeShape(shapeName As String, adjacentName As String)
+Sub MoveRelativeShape(shapeName As String, adjacentName As String, moveToEnd as Boolean)
     Dim ws As Worksheet : Set ws = ThisWorkbook.Sheets("Sheet1")
     Dim targetShape As Shape : Set targetShape = ws.Shapes(shapeName)
     Dim adjacentShape As Shape : Set adjacentShape = ws.Shapes(adjacentName)
 
-    targetShape.Left = adjacentShape.Left + adjacentShape.Width
-    targetShape.Top = adjacentShape.Top + adjacentShape.Height
-    MsgBox "Target: " & targetShape.Top & ", Adjacent: " & adjacentShape.Top
+    If moveToEnd Then
+        targetShape.Left = adjacentShape.Left + adjacentShape.Width
+        targetShape.Top = adjacentShape.Top + adjacentShape.Height
+    Else
+        targetShape.Left = adjacentShape.Left
+        targetShape.Top = adjacentShape.Top
+    End If
+    
 End Sub 
 
 Sub TryFunctions()
@@ -200,6 +224,10 @@ Sub TryFunctions()
     ' ChangeAngle "Width 1", 30
     ' ChangeLength "Width 1", 2
     ' MsgBox "Angle: " & GetAngle(targetShape)
+
+    Dim normal As New Collection
+    Set normal = NormalizeDimensions (2, 3, 2, 5)
+    MsgBox "X: " & normal("X") & vbNewLine & "Y: " & normal("Y")
 End Sub
 
 
