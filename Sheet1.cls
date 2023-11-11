@@ -1,7 +1,7 @@
 Private Sub Worksheet_Change(ByVal Target As Range)
 
     ' Update Column Footing
-    If Not Intersect(Target, Me.Range("K12:K14")) Is Nothing Then
+    If Not Intersect(Target, Me.Range("ColFootLength:ColFootThick")) Is Nothing Then
         ColumnFooting.UpdateLength
         ColumnFooting.UpdateWidth
         ColumnFooting.UpdateThickness
