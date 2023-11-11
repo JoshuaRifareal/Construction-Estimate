@@ -1,13 +1,8 @@
 Attribute VB_Name = "ChipDropdown"
+
 Sub ColFootMixChip_Click()
-    HideDropdown "ColFoot Mix Options"
-    HideDropdown "ColFoot Mix Panel"
+    HideDropdown "ColFoot Mix Chip", "ColFoot Mix Options"
+    PositionDropdown "ColFoot Mix Chip", "ColFoot Mix Options"
 End Sub
 
-Sub HideDropdown(dropdownName As String)
-    If ActiveSheet.Shapes.Range(Array(dropdownName)).Visible = msoFalse Then
-        ActiveSheet.Shapes.Range(Array(dropdownName)).Visible = msoTrue
-    Else
-        ActiveSheet.Shapes.Range(Array(dropdownName)).Visible = msoFalse
-    End If
-End Sub
+
